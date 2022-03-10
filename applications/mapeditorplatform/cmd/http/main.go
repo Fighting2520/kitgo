@@ -28,7 +28,7 @@ func main() {
 	var userEndPoint = endpoint.NewUserEndPoint(userService, logger, limit)
 	entrySet := endpoint.NewEntrySet(userEndPoint)
 	userServer := transport.NewUserServer(entrySet, logger)
-	r.Use(middleware.Cors)
+	r.Use(middleware.Recovery)
 	r.Path("/demo").HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		panic("this is panic demo")
 	})
