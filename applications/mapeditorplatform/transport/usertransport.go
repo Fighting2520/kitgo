@@ -12,7 +12,7 @@ import (
 	"github.com/Fighting2520/kitgo/applications/mapeditorplatform/utils/jsonresponse"
 	httptransport "github.com/go-kit/kit/transport/http"
 	"github.com/pkg/errors"
-	"github.com/tal-tech/go-zero/rest/httpx"
+	"github.com/zeromicro/go-zero/rest/httpx"
 )
 
 type (
