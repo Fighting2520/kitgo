@@ -11,12 +11,25 @@ import (
 	"net/http/httputil"
 	"os"
 	"runtime"
-	"runtime/debug"
 	"strings"
 	"time"
 )
 
-type RecoveryFunc func(next http.Handler, err interface{}) http.Handler
+type RecoveryFunc func(w http.ResponseWriter, err interface{})
+
+var (
+	defaultWriter = os.Stdout
+)
+
+const (
+	ansiColorRed     = "\x1b[31m"
+	ansiColorGreen   = "\x1b[32m"
+	ansiColorYellow  = "\x1b[33m"
+	ansiColorBlue    = "\x1b[34m"
+	ansiColorMagenta = "\x1b[35m"
+	ansiColorCyan    = "\x1b[36m"
+	ansiColorReset   = "\x1b[0m"
+)
 
 func RecoveryWithWriter(out io.Writer, recovery ...RecoveryFunc) Middleware {
 	if len(recovery) > 0 {
@@ -28,7 +41,7 @@ func RecoveryWithWriter(out io.Writer, recovery ...RecoveryFunc) Middleware {
 func CustomRecoveryWithWriter(out io.Writer, handle RecoveryFunc) Middleware {
 	var logger *log.Logger
 	if out != nil {
-		logger = log.New(out, "\n\n\x1b[31m", log.LstdFlags)
+		logger = log.New(out, "\n\n"+ansiColorRed, log.LstdFlags)
 	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -63,7 +76,7 @@ func CustomRecoveryWithWriter(out io.Writer, handle RecoveryFunc) Middleware {
 						}
 					}
 					if !brokenPipe {
-						handle(next, err)
+						handle(w, err)
 					}
 				}
 			}()
@@ -76,24 +89,8 @@ func Recovery(next http.Handler) http.Handler {
 	return RecoveryWithWriter(os.Stdout)(next)
 }
 
-func RecoveryHandler(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer func() {
-			if err := recover(); err != nil {
-				_, file, line, _ := runtime.Caller(2)
-				fmt.Printf("req path: %s, caller: %s, recovered by panic: %s\n", r.URL.String(), fmt.Sprintf("%s:%d", file, line), string(debug.Stack()))
-				w.WriteHeader(http.StatusInternalServerError)
-			}
-		}()
-		next.ServeHTTP(w, r)
-	})
-}
-
-func defaultHandleRecovery(next http.Handler, err interface{}) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-		next.ServeHTTP(w, r)
-	})
+func defaultHandleRecovery(w http.ResponseWriter, err interface{}) {
+	w.WriteHeader(http.StatusInternalServerError)
 }
 
 // stack returns a nicely formatted stack frame, skipping skip frames.

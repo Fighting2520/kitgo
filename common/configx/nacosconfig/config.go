@@ -25,6 +25,14 @@ type (
 	}
 )
 
+func NewConfig(opts ...Option) *Config {
+	var conf Config
+	for _, opt := range opts {
+		opt(&conf)
+	}
+	return &conf
+}
+
 // Option ...
 type Option func(*Config)
 

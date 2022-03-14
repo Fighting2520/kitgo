@@ -1,5 +1,7 @@
 package middleware
 
-import "net/http"
+import (
+	"github.com/gorilla/mux"
+)
 
-type Middleware func(handler http.Handler) http.Handler
+type Middleware = mux.MiddlewareFunc

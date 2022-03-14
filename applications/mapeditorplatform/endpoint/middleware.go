@@ -2,8 +2,8 @@ package endpoint
 
 import (
 	"context"
+	"github.com/Fighting2520/kitgo/common/log/logx"
 	"github.com/go-kit/kit/endpoint"
-	"github.com/go-kit/log"
 	"time"
 )
 
@@ -16,11 +16,11 @@ func Chain(outer endpoint.Middleware, others ...endpoint.Middleware) endpoint.Mi
 	}
 }
 
-func LoggingMiddleware(logger log.Logger) endpoint.Middleware {
+func LoggingMiddleware(logger logx.Logger) endpoint.Middleware {
 	return func(next endpoint.Endpoint) endpoint.Endpoint {
 		return func(ctx context.Context, request interface{}) (response interface{}, err error) {
 			defer func(begin time.Time) {
-				logger.Log("transport_error", err, "took", time.Since(begin))
+				logger.Infof("transport_error: %s, took:%d", err, time.Since(begin))
 			}(time.Now())
 			return next(ctx, request)
 		}

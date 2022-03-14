@@ -3,8 +3,8 @@ package transport
 import (
 	"context"
 	"encoding/json"
+	"github.com/Fighting2520/kitgo/common/errorx"
 	"github.com/go-kit/kit/endpoint"
-	"github.com/go-kit/log"
 	"net/http"
 
 	e "github.com/Fighting2520/kitgo/applications/mapeditorplatform/endpoint"
@@ -25,12 +25,22 @@ func (us *userServer) GetLoginServer() *httptransport.Server {
 	return us.login
 }
 
-func NewUserServer(set *e.EntrySet, logger log.Logger) *userServer {
+func NewUserServer(set *e.EntrySet) *userServer {
 	options := []httptransport.ServerOption{
 		httptransport.ServerBefore(func(ctx context.Context, request *http.Request) context.Context {
 			return context.WithValue(ctx, "somekey", "somevalue")
 		}),
-		httptransport.ServerErrorHandler(newLogErrorHandler(logger)),
+		httptransport.ServerErrorHandler(newDefaultErrorHandler()),
+		httptransport.ServerErrorEncoder(func(ctx context.Context, err error, w http.ResponseWriter) {
+			contentType, body := "text/plain; charset=utf-8", []byte(err.Error())
+			w.Header().Set("Content-Type", contentType)
+			code := http.StatusInternalServerError
+			if _, ok := err.(*errorx.CodeError); ok {
+				code = http.StatusNotAcceptable
+			}
+			w.WriteHeader(code)
+			w.Write(body)
+		}),
 	}
 	return &userServer{
 		login: httptransport.NewServer(set.LoginEndPoint, DecodeUserLoginRequest, EncodeUserLoginResponse, options...),
@@ -48,8 +58,8 @@ func DecodeUserLoginRequest(c context.Context, request *http.Request) (interface
 
 func EncodeUserLoginResponse(c context.Context, w http.ResponseWriter, response interface{}) error {
 	if f, ok := response.(endpoint.Failer); ok && f.Failed() != nil {
-		w.WriteHeader(http.StatusOK)
-		return json.NewEncoder(w).Encode(jsonresponse.ErrorResponse{Code: 2001, Message: f.Failed().Error()})
+		err := errorx.NewCodeError(2001, f.Failed().Error())
+		return json.NewEncoder(w).Encode(jsonresponse.ErrorResponse{Code: err.GetCode(), Message: err.GetMessage()})
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	return json.NewEncoder(w).Encode(jsonresponse.Response{Code: 0, Message: "success", Data: response})

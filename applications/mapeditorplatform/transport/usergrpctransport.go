@@ -7,14 +7,14 @@ import (
 	"github.com/Fighting2520/kitgo/applications/mapeditorplatform/cmd/grpc/proto/pb"
 	"github.com/Fighting2520/kitgo/applications/mapeditorplatform/endpoint"
 	"github.com/Fighting2520/kitgo/applications/mapeditorplatform/service"
+	"github.com/Fighting2520/kitgo/common/log/logx"
 	grpctransport "github.com/go-kit/kit/transport/grpc"
-	"github.com/go-kit/log"
 	"google.golang.org/grpc/metadata"
 )
 
 type (
 	logErrorHandler struct {
-		logger log.Logger
+		logger logx.Logger
 	}
 
 	userGrpcServer struct {
@@ -22,12 +22,11 @@ type (
 	}
 )
 
-func NewUserGrpcServer(set *endpoint.EntrySet, logger log.Logger) pb.UserServer {
+func NewUserGrpcServer(set *endpoint.EntrySet) pb.UserServer {
 	options := []grpctransport.ServerOption{
 		grpctransport.ServerBefore(func(ctx context.Context, md metadata.MD) context.Context {
 			return context.WithValue(ctx, "somekey", "somevalue")
 		}),
-		grpctransport.ServerErrorHandler(newLogErrorHandler(logger)),
 	}
 	return &userGrpcServer{
 		login: grpctransport.NewServer(set.UserEndPoint.LoginEndPoint, DecodeGrpcUserLoginRequest, EncodeGrpcUserLoginResponse, options...),
@@ -58,14 +57,14 @@ func (s *userGrpcServer) Info(ctx context.Context, req *pb.InfoRequest) (*pb.Inf
 	return res.(*pb.InfoReply), nil
 }
 
-func newLogErrorHandler(logger log.Logger) *logErrorHandler {
+func newLogErrorHandler(logger logx.Logger) *logErrorHandler {
 	return &logErrorHandler{
 		logger: logger,
 	}
 }
 
 func (h *logErrorHandler) Handle(ctx context.Context, err error) {
-	h.logger.Log("err", err.Error())
+	h.logger.Errorf("err: %s", err)
 }
 
 func DecodeGrpcUserLoginRequest(ctx context.Context, request interface{}) (interface{}, error) {

@@ -2,33 +2,28 @@ package main
 
 import (
 	"fmt"
-	"net"
-	"os"
-
 	"github.com/Fighting2520/kitgo/applications/mapeditorplatform/cmd/grpc/proto/pb"
 	"github.com/Fighting2520/kitgo/applications/mapeditorplatform/endpoint"
 	"github.com/Fighting2520/kitgo/applications/mapeditorplatform/model"
 	"github.com/Fighting2520/kitgo/applications/mapeditorplatform/service"
 	"github.com/Fighting2520/kitgo/applications/mapeditorplatform/transport"
-	"github.com/go-kit/kit/log"
+	"github.com/Fighting2520/kitgo/common/log/logx"
 	grpctransport "github.com/go-kit/kit/transport/grpc"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
+	"net"
 )
 
 func main() {
 	userModel := model.NewUserModel("root:123456@tcp(127.0.0.1:3306)/semantic_map?charset=utf8&parseTime=True&loc=Asia%2FShanghai", "user")
-	var logger log.Logger
-	{
-		logger = log.NewLogfmtLogger(os.Stderr)
-		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
-		logger = log.With(logger, "caller", log.DefaultCaller)
-	}
-	userService := service.Chain(service.LoggingMiddleware(logger))(service.NewService(userModel))
+	logx.MustSetup(logx.LogConf{
+		Mode: "console",
+	})
+	userService := service.NewService(userModel)
 	limit := rate.NewLimiter(1, 1)
-	var userEndPoint = endpoint.NewUserEndPoint(userService, logger, limit)
+	var userEndPoint = endpoint.NewUserEndPoint(userService, limit)
 	entrySet := endpoint.NewEntrySet(userEndPoint)
-	grpcServ := transport.NewUserGrpcServer(entrySet, logger)
+	grpcServ := transport.NewUserGrpcServer(entrySet)
 	listen, err := net.Listen("tcp", ":8889")
 	if err != nil {
 		fmt.Println(err)
